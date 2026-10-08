@@ -83,9 +83,19 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-36"
+          packages: "platform-tools;platforms;android-36;ndk;28.2.13676358"
           accept-android-sdk-licenses: true
-      - run: sdkmanager 'ndk;28.2.13676358'
+      - name: 校验 Android SDK 组件
+        run: |
+          set -euo pipefail
+          sdkmanager --list_installed | tee /tmp/sdk-manager-list.txt
+          for package in 'platforms;android-36' 'ndk;28.2.13676358' 'build-tools;'; do
+            if ! grep -Fq "$package" /tmp/sdk-manager-list.txt; then
+              echo "缺少 Android SDK 组件：$package" >&2
+              exit 1
+            fi
+          done
+          echo "Android SDK 与 NDK 就绪：${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
       - name: Configure Android signing
         run: python scripts/configure_signing.py
         env:
