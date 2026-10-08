@@ -83,18 +83,21 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # 注意：packages 参数用换行分隔多个包名；包名内部的 ";" 不能当作分隔符，
-          # 否则会拼成一个不存在的包名（Failed to find package）。
-          packages: |
-            platform-tools
-            platforms;android-36
+          # 注意：该 action 会把 packages 里的换行/分号折叠后交给同一次 sdkmanager 调用，
+          # 传多个包（或把 ";" 当分隔符）会拼成一个不存在的包名
+          # （Failed to find package 'platform-tools platforms;android-36'）。
+          # 因此这里只交给 action 一个包，其余组件用下面的 sdkmanager 步骤显式安装。
+          packages: 'platforms;android-36'
           accept-android-sdk-licenses: true
-      - run: sdkmanager 'ndk;28.2.13676358'
+      - name: 安装 Android SDK 其余组件
+        run: |
+          set -euo pipefail
+          sdkmanager 'platform-tools' 'ndk;28.2.13676358'
       - name: 校验 Android SDK 组件
         run: |
           set -euo pipefail
           sdkmanager --list_installed | tee /tmp/sdk-manager-list.txt
-          for package in 'platforms;android-36' 'ndk;28.2.13676358'; do
+          for package in 'platforms;android-36' 'platform-tools' 'ndk;28.2.13676358'; do
             if ! grep -Fq "$package" /tmp/sdk-manager-list.txt; then
               echo "缺少 Android SDK 组件：$package" >&2
               exit 1
